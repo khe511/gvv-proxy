@@ -745,10 +745,41 @@ function renderAdmin(main) {
   };
   const cols = headers[tab] || [];
 
+  // 컬럼별 입력 위젯 결정
+  function cellInput(h, val, dataAttr) {
+    const v = val || "";
+    const st = `class="admin-input" ${dataAttr}`;
+    if (h === "상태") {
+      return `<select ${st} style="height:32px;padding:0 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;font-family:inherit;width:100%">
+        ${["활성","대기","삭제"].map(o => `<option value="${o}"${v===o?" selected":""}>${o}</option>`).join("")}
+      </select>`;
+    }
+    if (h === "활성여부") {
+      return `<select ${st} style="height:32px;padding:0 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;font-family:inherit;width:100%">
+        <option value="Y"${v==="Y"?" selected":""}>Y</option>
+        <option value="N"${v==="N"?" selected":""}>N</option>
+      </select>`;
+    }
+    if (h === "필수여부") {
+      return `<select ${st} style="height:32px;padding:0 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;font-family:inherit;width:100%">
+        ${["critical","warning",""].map(o => `<option value="${o}"${v===o?" selected":""}>${o||"(없음)"}</option>`).join("")}
+      </select>`;
+    }
+    if (h === "날짜") {
+      // 저장된 값 YYYY.MM.DD → input[date] 형식 YYYY-MM-DD 변환
+      const toInputDate = s => s ? s.replace(/\./g, "-") : "";
+      return `<input type="date" ${st} value="${toInputDate(v)}" style="height:32px;padding:0 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;font-family:inherit;width:100%" />`;
+    }
+    if (h === "판단기준" || h === "설명") {
+      return `<textarea ${st.replace("admin-input","admin-textarea")}>${v}</textarea>`;
+    }
+    return `<input ${st} value="${v.replace(/"/g,"&quot;")}" />`;
+  }
+
   let rows = sheetData.map((row, i) => {
     if (state.editingRow === i) {
       return `<tr style="background:var(--primary-light)">
-        ${cols.map(h => `<td style="padding:6px 8px;border:1px solid var(--gray-300)">${(h === "판단기준" || h === "설명") ? `<textarea class="admin-textarea" data-col="${h}" data-row="${i}">${row[h] || ""}</textarea>` : `<input class="admin-input" data-col="${h}" data-row="${i}" value="${(row[h] || "").replace(/"/g, "&quot;")}" />`}</td>`).join("")}
+        ${cols.map(h => `<td style="padding:6px 8px;border:1px solid var(--gray-300)">${cellInput(h, row[h], `data-col="${h}" data-row="${i}"`)}</td>`).join("")}
         <td style="padding:6px 8px;border:1px solid var(--gray-300);text-align:center">
           <button onclick="saveRow(${i})" style="padding:4px 10px;background:var(--success);color:var(--white);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer">저장</button>
           <button onclick="cancelEdit()" style="padding:4px 8px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:4px;font-size:11px;cursor:pointer">취소</button>
@@ -756,7 +787,7 @@ function renderAdmin(main) {
       </tr>`;
     }
     return `<tr>
-      ${cols.map(h => `<td style="padding:10px 12px;border:1px solid var(--gray-300);max-width:${(h==="판단기준"||h==="설명")?"280px":"none"};word-break:break-word">${h === "활성여부" ? `<span class="yn-badge ${row[h]==="Y"?"y":"n"}">${row[h]}</span>` : row[h] || "—"}</td>`).join("")}
+      ${cols.map(h => `<td style="padding:10px 12px;border:1px solid var(--gray-300);max-width:${(h==="판단기준"||h==="설명")?"280px":"none"};word-break:break-word">${h === "활성여부" ? `<span class="yn-badge ${row[h]==="Y"?"y":"n"}">${row[h]}</span>` : h === "상태" ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${row[h]==="활성"?"var(--success-bg)":row[h]==="삭제"?"var(--error-bg)":"var(--gray-100)"};color:${row[h]==="활성"?"var(--success)":row[h]==="삭제"?"var(--error)":"var(--gray-500)"}">${row[h]||"—"}</span>` : row[h] || "—"}</td>`).join("")}
       <td style="padding:6px 8px;border:1px solid var(--gray-300);text-align:center">
         <button onclick="startEdit(${i})" style="padding:4px 10px;background:var(--primary-light);color:var(--primary);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer">수정</button>
         <button onclick="deleteRow(${i})" style="padding:4px 8px;background:var(--error-bg);color:var(--error);border:none;border-radius:4px;font-size:11px;cursor:pointer">삭제</button>
@@ -766,7 +797,7 @@ function renderAdmin(main) {
 
   if (state.addingRow) {
     rows += `<tr style="background:var(--success-bg)">
-      ${cols.map(h => `<td style="padding:6px 8px;border:1px solid var(--gray-300)">${(h === "판단기준" || h === "설명") ? `<textarea class="admin-textarea" data-newcol="${h}" placeholder="${h}"></textarea>` : `<input class="admin-input" data-newcol="${h}" placeholder="${h}" value="${(state.newRow[h]||"").replace(/"/g,"&quot;")}" />`}</td>`).join("")}
+      ${cols.map(h => `<td style="padding:6px 8px;border:1px solid var(--gray-300)">${cellInput(h, state.newRow[h]||"", `data-newcol="${h}"`)}</td>`).join("")}
       <td style="padding:6px 8px;border:1px solid var(--gray-300);text-align:center">
         <button onclick="addRow()" style="padding:4px 10px;background:var(--success);color:var(--white);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer">추가</button>
         <button onclick="cancelAdd()" style="padding:4px 8px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:4px;font-size:11px;cursor:pointer">취소</button>
@@ -808,12 +839,20 @@ function cancelEdit() { state.editingRow = null; render(); }
 function startAdd() { state.addingRow = true; state.editingRow = null; state.newRow = {}; render(); }
 function cancelAdd() { state.addingRow = false; state.newRow = {}; render(); }
 
+function formatDateVal(h, val) {
+  // 날짜 컬럼: input[date] 값(YYYY-MM-DD) → YYYY.MM.DD 로 저장
+  if (h === "날짜" && val && val.includes("-")) {
+    return val.replace(/-/g, ".");
+  }
+  return val;
+}
+
 async function saveRow(i) {
   const cols = { "버전관리": ["버전","날짜","상태","비고"], "추출항목": ["항목키","항목명","필수여부","택1그룹","설명","활성여부"], "검증기준": ["검증단계","항목명","판단기준","비고","활성여부"] }[state.adminTab] || [];
   const data = {};
   cols.forEach(h => {
     const el = document.querySelector(`[data-col="${h}"][data-row="${i}"]`);
-    if (el) data[h] = el.value;
+    if (el) data[h] = formatDateVal(h, el.value);
   });
   await gasWrite("updateRow", state.adminTab, data, i);
   await loadSheets();
@@ -825,7 +864,7 @@ async function addRow() {
   const data = {};
   cols.forEach(h => {
     const el = document.querySelector(`[data-newcol="${h}"]`);
-    if (el) data[h] = el.value;
+    if (el) data[h] = formatDateVal(h, el.value);
   });
   await gasWrite("addRow", state.adminTab, data);
   await loadSheets();
