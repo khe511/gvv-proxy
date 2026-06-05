@@ -261,7 +261,7 @@ function fileBlock(b64, file) {
   return { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: b64 } };
 }
 async function callClaude(messages) {
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+  const resp = await fetch(`${GAS_URL}?action=claude`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, messages }),
