@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GVV · jeju-gift-card 등록 검증</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif; background: #F3F4F6; min-height: 100vh; }
+
+  /* 토큰 */
+  :root {
+    --primary: #2563EB; --primary-light: #DBEAFE;
+    --success: #16A34A; --success-bg: #DCFCE7;
+    --error: #DC2626; --error-bg: #FEE2E2;
+    --warning: #D97706; --warning-bg: #FEF3C7;
+    --info: #0284C7; --info-bg: #E0F2FE;
+    --gray-900: #111827; --gray-700: #374151; --gray-500: #6B7280;
+    --gray-300: #D1D5DB; --gray-100: #F3F4F6; --gray-50: #F9FAFB; --white: #FFFFFF;
+  }
+
+  /* 헤더 */
+  header {
+    background: var(--white); border-bottom: 1px solid var(--gray-300);
+    padding: 0 40px; height: 56px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 24px; }
+  .logo { font-size: 16px; font-weight: 700; color: var(--primary); }
+  .logo span { color: var(--gray-500); font-weight: 400; font-size: 13px; margin-left: 8px; }
+  .tab-group { display: flex; gap: 4px; }
+  .tab-btn {
+    padding: 6px 16px; border-radius: 6px; border: none;
+    font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    background: transparent; color: var(--gray-500);
+  }
+  .tab-btn.active { background: var(--primary-light); color: var(--primary); }
+  .header-right { display: flex; align-items: center; gap: 16px; font-size: 11px; }
+  .status-ok { color: var(--success); }
+  .status-err { color: var(--error); cursor: pointer; }
+  .status-loading { color: var(--gray-500); }
+
+  /* 스텝 인디케이터 */
+  .step-indicator { display: flex; align-items: center; gap: 6px; }
+  .step-item { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+  .step-line { width: 32px; height: 1px; background: var(--gray-300); }
+  .step-line.done { background: var(--success); }
+  .step-circle {
+    width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--gray-100); color: var(--gray-500); border: 2px solid var(--gray-300);
+  }
+  .step-circle.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
+  .step-circle.done { background: var(--success); color: var(--white); border-color: var(--success); }
+  .step-label { color: var(--gray-500); font-weight: 400; }
+  .step-label.active { color: var(--primary); font-weight: 600; }
+  .step-label.done { color: var(--success); }
+
+  /* 메인 */
+  main { max-width: 960px; margin: 0 auto; padding: 32px 40px; }
+
+  /* 카드 */
+  .card {
+    background: var(--white); border: 1px solid var(--gray-300); border-radius: 8px;
+    padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 12px;
+  }
+
+  /* 섹션 타이틀 */
+  .section-title {
+    font-size: 16px; font-weight: 600; color: var(--gray-900);
+    display: flex; align-items: center; gap: 8px;
+    padding-bottom: 12px; margin-bottom: 16px; border-bottom: 2px solid var(--primary);
+  }
+  .title-num {
+    width: 24px; height: 24px; background: var(--primary); color: var(--white);
+    border-radius: 50%; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* 버튼 */
+  .btn-primary {
+    height: 44px; padding: 0 24px; background: var(--primary); color: var(--white);
+    border: none; border-radius: 8px; font-family: inherit; font-size: 14px;
+    font-weight: 600; cursor: pointer;
+  }
+  .btn-primary:disabled { background: var(--gray-100); color: var(--gray-500); cursor: not-allowed; }
+  .btn-secondary {
+    height: 44px; padding: 0 20px; background: var(--white); color: var(--gray-700);
+    border: 1px solid var(--gray-300); border-radius: 8px; font-family: inherit;
+    font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+
+  /* 업로드 존 */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .upload-label-text { font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px; min-height: 36px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .upload-sub { font-weight: 400; color: var(--gray-500); font-size: 12px; margin-top: 2px; }
+  .upload-zone {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 120px; border-radius: 8px; text-align: center; position: relative;
+    cursor: pointer; border: 2px dashed var(--gray-300); background: var(--gray-50);
+    transition: all 0.15s;
+  }
+  .upload-zone:hover { border-color: var(--primary); background: var(--primary-light); }
+  .upload-zone.has-file { border: 2px solid var(--success); background: var(--success-bg); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 24px; opacity: 0.5; margin-bottom: 6px; }
+  .upload-text { font-size: 13px; color: var(--gray-500); }
+  .upload-zone.has-file .upload-text { color: var(--success); font-weight: 600; }
+  .upload-hint { font-size: 11px; color: var(--gray-500); margin-top: 3px; }
+
+  /* 스피너 */
+  .spinner-wrap { text-align: center; padding: 40px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 28px; height: 28px; border: 3px solid var(--primary-light);
+    border-top-color: var(--primary); border-radius: 50%;
+    animation: spin 0.75s linear infinite; margin: 0 auto 14px;
+  }
+  .spinner-msg { font-size: 14px; color: var(--gray-500); }
+
+  /* 알림 박스 */
+  .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; }
+  .alert-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .alert-body { font-size: 12px; }
+  .alert.error { background: var(--error-bg); border: 1px solid var(--error); }
+  .alert.error .alert-title { color: var(--error); }
+  .alert.warning { background: var(--warning-bg); border: 1px solid #FCD34D; }
+  .alert.warning .alert-title { color: var(--warning); }
+  .alert.info { background: var(--info-bg); border: 1px solid #BAE0FD; }
+  .alert.info .alert-title { color: var(--info); }
+  .alert.success { background: var(--success-bg); border: 1px solid var(--success); }
+  .alert.success .alert-title { color: var(--success); }
+
+  /* 인포칩 */
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+    border-radius: 6px; background: var(--gray-50); border: 1px solid var(--gray-300); font-size: 12px;
+  }
+  .chip-label { color: var(--gray-500); }
+  .chip-value { font-weight: 600; color: var(--gray-700); }
+  .chip.highlight { background: var(--primary-light); }
+  .chip.highlight .chip-value { color: var(--primary); }
+
+  /* 결과 테이블 */
+  .result-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .result-table th { text-align: left; padding: 10px 16px; font-weight: 600; color: var(--gray-700); border: 1px solid var(--gray-300); background: var(--gray-50); }
+  .result-table td { padding: 10px 16px; border: 1px solid var(--gray-300); font-size: 13px; color: var(--gray-700); }
+  .result-table tr.row-fail td { background: var(--error-bg); }
+  .result-table tr.row-recheck td { background: var(--warning-bg); }
+
+  /* 배지 */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+  .badge.success { background: var(--success-bg); color: var(--success); }
+  .badge.error { background: var(--error-bg); color: var(--error); }
+  .badge.warning { background: var(--warning-bg); color: var(--warning); }
+  .badge.skip { background: var(--gray-100); color: var(--gray-500); }
+
+  /* 태그칩 */
+  .tag { padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; }
+  .tag.error { background: var(--error-bg); color: var(--error); border: 1px solid var(--error); }
+  .tag.warning { background: var(--warning-bg); color: var(--warning); border: 1px solid #FCD34D; }
+
+  /* 어드민 */
+  .admin-tab-group { display: flex; gap: 8px; margin-bottom: 16px; }
+  .admin-tab { padding: 8px 18px; border-radius: 6px; border: none; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--gray-100); color: var(--gray-700); }
+  .admin-tab.active { background: var(--primary); color: var(--white); }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .admin-table th { text-align: left; padding: 10px 12px; font-weight: 600; color: var(--gray-700); border: 1px solid var(--gray-300); background: var(--gray-50); white-space: nowrap; }
+  .admin-table td { padding: 10px 12px; border: 1px solid var(--gray-300); color: var(--gray-700); word-break: break-word; }
+  .admin-input { height: 32px; padding: 0 8px; border: 1px solid var(--gray-300); border-radius: 4px; font-size: 12px; font-family: inherit; width: 100%; }
+  .admin-textarea { height: 56px; padding: 4px 8px; border: 1px solid var(--gray-300); border-radius: 4px; font-size: 12px; font-family: inherit; width: 100%; resize: vertical; }
+  .yn-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  .yn-badge.y { background: var(--success-bg); color: var(--success); }
+  .yn-badge.n { background: var(--gray-100); color: var(--gray-500); }
+
+  /* 푸터 */
+  footer {
+    height: 72px; border-top: 1px solid var(--gray-300); background: var(--white);
+    display: flex; align-items: center; justify-content: space-between; padding: 0 40px;
+    font-size: 12px; color: var(--gray-500);
+  }
+  footer span:last-child { font-size: 11px; color: var(--gray-300); }
+
+  /* 페이드업 */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .fu { animation: fadeUp 0.25s ease both; }
+
+  .flex-gap { display: flex; gap: 12px; }
+  .mt8 { margin-top: 8px; }
+  .verify-block { margin-bottom: 28px; }
+  .verify-block-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--gray-300); }
+  .verify-block-title { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+  .skip-box { background: var(--gray-50); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--gray-500); }
+  .diff-cell { display: flex; flex-direction: column; gap: 4px; }
+  .diff-label { flex-shrink: 0; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+  .diff-row { display: flex; align-items: flex-start; gap: 4px; font-size: 11px; }
+  .note-text { font-size: 11px; color: var(--gray-500); margin-top: 4px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo">GVV <span>jeju-gift-card 등록 검증 · 정책수당</span></div>
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="switchMainTab('verify')">🔍 검증</button>
+      <button class="tab-btn" onclick="switchMainTab('admin')">⚙️ 어드민</button>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="sheets-status" class="status-loading">📡 Sheets 로드 중…</span>
+    <div class="step-indicator" id="step-indicator"></div>
+  </div>
+</header>
+
+<main id="main-content"></main>
+
+<footer>
+  <span>GVV jeju-gift-card · 비즈플레이 상품권사업본부 · Sheets 연동 AI 자동 검증</span>
+  <span id="footer-ver">v6.2 · 기준 v1.6 (2026.6.2)</span>
+</footer>
+
+<script>
+// ── 설정 ──────────────────────────────────────────────────
+const GAS_URL = "/api/proxy";
+const ADMIN_PASSWORD = "gvv2026";
+const REQUIRED_VERSION = "v1.6";
+
+// ── 상태 ──────────────────────────────────────────────────
+let state = {
+  mainTab: "verify",
+  phase: "step1", // step1 | analyzing | step2 | verifying | result | error | version_err
+  sheets: null,
+  sheetsLoading: true,
+  sheetsError: null,
+  adminAuth: false,
+  adminTab: "추출항목",
+  filePolicy: null, fileBO: null, fileCashback: null, fileFirm: null,
+  policyInfo: null,
+  results: { r1: null, r2: null, r3: null },
+  loadingMsg: "",
+  errorMsg: "",
+  editingRow: null,
+  addingRow: false,
+  newRow: {},
+};
+
+// ── 유틸 ──────────────────────────────────────────────────
+async function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function fileBlock(b64, file) {
+  const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+  if (isPdf) return { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } };
+  return { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: b64 } };
+}
+async function callClaude(messages) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, messages }),
+  });
+  if (!resp.ok) throw new Error(`API 오류 (${resp.status})`);
+  const d = await resp.json();
+  return d.content?.find(b => b.type === "text")?.text || "{}";
+}
+function parseJSON(raw) {
+  try { const m = raw.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : {}; } catch { return {}; }
+}
+function parseVer(v) {
+  const m = (v || "").match(/v?([\d]+)\.([\d]+)/);
+  return m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0;
+}
+const EMPTY_VALS = ["", null, undefined, "항목없음", "없음", "버전없음"];
+
+// ── GAS 통신 ──────────────────────────────────────────────
+async function gasRead() {
+  const r = await fetch(`${GAS_URL}?action=read`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+async function gasWrite(action, sheet, data, rowIndex) {
+  const r = await fetch(GAS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, sheet, data, rowIndex }),
+  });
+  return r.json();
+}
+
+// ── Sheets 로드 ───────────────────────────────────────────
+async function loadSheets() {
+  state.sheetsLoading = true; state.sheetsError = null;
+  renderHeader();
+  try {
+    const data = await gasRead();
+    if (data.error) throw new Error(data.error);
+    state.sheets = data;
+  } catch (e) { state.sheetsError = e.message; }
+  state.sheetsLoading = false;
+  renderHeader();
+  render();
+}
+
+// ── 프롬프트 빌더 ─────────────────────────────────────────
+function buildExtractPrompt() {
+  const items = (state.sheets?.["추출항목"] || []).filter(i => i["활성여부"] === "Y");
+  const rules = (state.sheets?.["검증기준"] || []).filter(r => r["활성여부"] === "Y" && r["검증단계"] === "2_1");
+  const fieldList = items.map(i => `"${i["항목키"]}": "${i["설명"]}"`).join(",\n  ");
+  const ruleText = rules.map(r => `- ${r["항목명"]}: ${r["판단기준"]}`).join("\n");
+  return `이 이미지는 탐나는전 정책수당 상품권 정책서야. 내용 셀만 읽어라. 비고/설명 컬럼 무시.
+JSON만 응답:
+{
+  ${fieldList},
+  "needCashback": "캐시백 미지급이면 true, 그 외 false",
+  "needFirm": "펌 신청완료이면 true, 그 외 false",
+  "isDesignatedMerchant": "조건설정2 지정가맹점이면 true, 그 외 false",
+  "policyVersion": "오른쪽 상단 버전 (예: v1.6). 없으면 버전없음",
+  "validityType": "지정일기준|생성일기준|둘다기재|항목없음",
+  "validityTypeBothFilled": "true|false",
+  "salesUpperChoice": "매출제한없음|지정매출구간|항목없음",
+  "salesUpperBothFilled": "true|false",
+  "salesGradeChecked": "체크된 구간 쉼표 나열|없음",
+  "merchantCondition": "조건설정1|조건설정2|둘다설정|항목없음"
+}
+판단원칙: ${ruleText}
+택1판단: 내용 컬럼만 기준. 유효기간/매출/가맹점 각각 1개만 선택해야 함. 둘 다 있으면 BothFilled=true.`;
+}
+function buildVerifyPrompt(info) {
+  const rules = (state.sheets?.["검증기준"] || []).filter(r => r["활성여부"] === "Y" && r["검증단계"] === "2_1");
+  const ruleText = rules.map(r => `- ${r["항목명"]}: ${r["판단기준"]}`).join("\n");
+  return `탐나는전 BO 등록 검증. 이미지1=정책서, 이미지2=BO 속성화면.
+판단원칙:\n${ruleText}
+검증항목: 상품권명/상품권구분/유효기간(발행기간종료일↔BO유효기간)/발행액/은행명/계좌번호/예금주/사업자번호/잔액인출/만료환불/개인선물/업종/매출${info.needDesignatedMerchant ? "/지정가맹점개별설정체크여부" : ""}
+JSON만: {"items":[{"field":"항목명","policy":"정책서값","bo":"BO값","status":"일치|불일치|재확인|항목없음","note":""}],"summary":"전체일치|불일치항목있음|재확인필요"}`;
+}
+function buildCashbackPrompt(info) {
+  const rules = state.sheets?.["검증기준"] || [];
+  const rule = rules.find(r => r["검증단계"] === "2_2" && r["활성여부"] === "Y");
+  return `캐시백 제외 목록 검증. 판단기준: ${rule?.["판단기준"] || "핵심어가 목록에 있으면 일치"}
+상품권명: "${info.voucherName}" / 핵심어: "${info.voucherKeyword}"
+JSON만: {"items":[{"field":"조건 상품권 등록 여부","policy":"${info.voucherName} 등록 필요","bo":"화면 항목명","status":"일치|불일치|재확인","note":""}],"summary":"전체일치|불일치항목있음|재확인필요"}`;
+}
+function buildFirmPrompt(info) {
+  const rules = (state.sheets?.["검증기준"] || []).filter(r => r["검증단계"] === "2_3" && r["활성여부"] === "Y");
+  const ruleText = rules.map(r => `- ${r["항목명"]}: ${r["판단기준"]}`).join("\n");
+  return `펌테스트 검증. 계좌: ${info.account} / 핵심명칭: ${info.voucherKeyword} / 발행시작: ${info.issuanceStart}
+판단기준:\n${ruleText}
+JSON만: {"items":[{"field":"항목명","policy":"기준값","bo":"화면값","status":"일치|불일치|재확인","note":""}],"summary":"전체일치|불일치항목있음|재확인필요"}`;
+}
+
+// ── 검증 로직 ─────────────────────────────────────────────
+function checkTaek1(info) {
+  const v = [];
+  if (info.validityTypeBothFilled === "true" || info.validityTypeBothFilled === true)
+    v.push({ field: "유효기간 (택1)", detail: "생성일 기준과 지정일 기준이 모두 작성되어 있어요." });
+  if (info.salesUpperBothFilled === "true" || info.salesUpperBothFilled === true)
+    v.push({ field: "매출 (택1)", detail: "매출 제한 없음과 지정 매출 구간이 동시에 선택되어 있어요." });
+  if (info.salesUpperChoice === "지정매출구간" && (!info.salesGradeChecked || info.salesGradeChecked === "없음"))
+    v.push({ field: "매출 구간 (필수)", detail: "지정 매출 구간을 선택했으나 A~E 구간이 체크되지 않았어요." });
+  if (info.merchantCondition === "둘다설정")
+    v.push({ field: "사용 가능 가맹점 (택1)", detail: "조건 설정 1과 2가 모두 작성되어 있어요." });
+  if (info.merchantCondition === "항목없음")
+    v.push({ field: "사용 가능 가맹점 (택1)", detail: "조건 설정 1 또는 2 중 하나를 반드시 작성해야 해요." });
+  return v;
+}
+function checkRequired(info) {
+  const items = state.sheets?.["추출항목"] || [];
+  const missing = [], warnings = [];
+  items.filter(i => i["활성여부"] === "Y").forEach(f => {
+    const val = info[f["항목키"]];
+    const isEmpty = EMPTY_VALS.includes(val) || (typeof val === "string" && val.trim() === "");
+    if (isEmpty) {
+      if (f["필수여부"] === "critical") missing.push(f["항목명"]);
+      else warnings.push(f["항목명"]);
+    }
+  });
+  return { missing, warnings };
+}
+
+// ── 액션 ──────────────────────────────────────────────────
+async function analyzePolicy() {
+  state.phase = "analyzing"; state.loadingMsg = "정책서 분석 중… AI가 항목을 읽고 있어요"; render();
+  try {
+    const p1b64 = await toBase64(state.filePolicy);
+    const raw = await callClaude([{ role: "user", content: [fileBlock(p1b64, state.filePolicy), { type: "text", text: buildExtractPrompt() }] }]);
+    const info = parseJSON(raw);
+    info.needCashback = info.needCashback === "true" || info.needCashback === true || info.cashbackStatus === "캐시백 미지급";
+    info.needFirm = info.needFirm === "true" || info.needFirm === true || info.firmStatus === "신청완료";
+    info.needDesignatedMerchant = info.isDesignatedMerchant === "true" || info.isDesignatedMerchant === true;
+    const activeVersion = state.sheets?.["버전관리"]?.find(v => v["상태"] === "활성");
+    const reqVer = activeVersion?.["버전"] || REQUIRED_VERSION;
+    const ver = (info.policyVersion || "").trim();
+    const verNum = parseVer(ver), reqNum = parseVer(reqVer);
+    if (!ver || ver === "버전없음" || verNum === 0) info.versionStatus = "없음";
+    else if (verNum < reqNum) info.versionStatus = "낮음";
+    else if (verNum === reqNum) info.versionStatus = "정상";
+    else info.versionStatus = "높음";
+    const { missing, warnings } = checkRequired(info);
+    info.missingCritical = missing; info.missingWarnings = warnings; info.taek1Violations = checkTaek1(info);
+    state.policyInfo = info;
+    state.phase = (info.versionStatus === "없음" || info.versionStatus === "낮음") ? "version_err" : "step2";
+  } catch (e) { state.errorMsg = e.message; state.phase = "error"; }
+  render();
+}
+
+async function runVerify() {
+  state.phase = "verifying"; render();
+  try {
+    const p1b64 = await toBase64(state.filePolicy);
+    const bo1b64 = await toBase64(state.fileBO);
+    state.loadingMsg = "2_1 속성정보 검증 중…"; render();
+    const r1 = parseJSON(await callClaude([{ role: "user", content: [fileBlock(p1b64, state.filePolicy), fileBlock(bo1b64, state.fileBO), { type: "text", text: buildVerifyPrompt(state.policyInfo) }] }]));
+    let r2 = null;
+    if (state.policyInfo.needCashback && state.fileCashback) {
+      state.loadingMsg = "2_2 캐시백 미지급 검증 중…"; render();
+      const cb64 = await toBase64(state.fileCashback);
+      r2 = parseJSON(await callClaude([{ role: "user", content: [fileBlock(p1b64, state.filePolicy), fileBlock(cb64, state.fileCashback), { type: "text", text: buildCashbackPrompt(state.policyInfo) }] }]));
+    }
+    let r3 = null;
+    if (state.policyInfo.needFirm && state.fileFirm) {
+      state.loadingMsg = "2_3 펌테스트 이체결과 검증 중…"; render();
+      const fb64 = await toBase64(state.fileFirm);
+      r3 = parseJSON(await callClaude([{ role: "user", content: [fileBlock(p1b64, state.filePolicy), fileBlock(fb64, state.fileFirm), { type: "text", text: buildFirmPrompt(state.policyInfo) }] }]));
+    }
+    state.results = { r1, r2, r3 }; state.phase = "result";
+  } catch (e) { state.errorMsg = e.message; state.phase = "error"; }
+  render();
+}
+
+function resetVerify() {
+  state.phase = "step1"; state.filePolicy = null; state.fileBO = null;
+  state.fileCashback = null; state.fileFirm = null; state.policyInfo = null;
+  state.results = { r1: null, r2: null, r3: null }; state.errorMsg = "";
+  render();
+}
+
+function switchMainTab(tab) {
+  state.mainTab = tab; render();
+}
+
+// ── 렌더 헬퍼 ─────────────────────────────────────────────
+function chip(label, value, highlight = false) {
+  return `<div class="chip${highlight ? " highlight" : ""}"><span class="chip-label">${label}</span><span class="chip-value">${value || "—"}</span></div>`;
+}
+
+function renderDiffCell(item) {
+  if (item.status === "일치") return `<span style="color:var(--success);font-weight:600;font-size:12px">✅ 일치</span>`;
+  if (item.status === "항목없음") return `<span style="color:var(--gray-500);font-size:12px">— 항목없음</span>`;
+  const isErr = item.status === "불일치";
+  const col = isErr ? "var(--error)" : "var(--warning)";
+  const bg = isErr ? "var(--error-bg)" : "var(--warning-bg)";
+  const ibg = "var(--info-bg)";
+  return `<div class="diff-cell">
+    <span style="color:${col};font-weight:700;font-size:12px">${isErr ? "❌ 불일치" : "⚠️ 재확인"}</span>
+    <div class="diff-row"><span class="diff-label" style="background:${ibg};color:var(--info)">정책서</span><span style="color:var(--info);font-weight:600;word-break:break-all;font-size:11px">${item.policy || "—"}</span></div>
+    <div class="diff-row"><span class="diff-label" style="background:${bg};color:${col}">BO</span><span style="color:${col};font-weight:600;word-break:break-all;font-size:11px">${item.bo || "—"}</span></div>
+    ${item.note ? `<div class="note-text">※ ${item.note}</div>` : ""}
+  </div>`;
+}
+
+function renderResultTable(items, boLabel = "BO 등록값") {
+  if (!items?.length) return `<p style="font-size:13px;color:var(--gray-500);padding:8px">추출된 항목이 없습니다.</p>`;
+  const rows = items.map(item => {
+    const cls = item.status === "불일치" ? "row-fail" : item.status === "재확인" ? "row-recheck" : "";
+    return `<tr class="${cls}">
+      <td style="font-weight:500">${item.field}</td>
+      <td>${item.policy || "—"}</td>
+      <td>${item.bo || "—"}</td>
+      <td style="vertical-align:top;min-width:140px">${renderDiffCell(item)}</td>
+    </tr>`;
+  }).join("");
+  return `<table class="result-table"><thead><tr><th>항목</th><th>정책서 기준값</th><th>${boLabel}</th><th>결과</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderVerifyBlock(title, result, skipped, skipReason, boLabel = "BO 등록값") {
+  const hasFail = result?.items?.some(i => i.status === "불일치");
+  const hasRecheck = result?.items?.some(i => i.status === "재확인");
+  const badge = skipped
+    ? `<span class="badge skip">해당없음</span>`
+    : hasFail ? `<span class="badge error">❌ FAIL</span>`
+    : hasRecheck ? `<span class="badge warning">⚠️ 재확인</span>`
+    : `<span class="badge success">✅ PASS</span>`;
+  const body = skipped
+    ? `<div class="skip-box">⊘ ${skipReason}</div>`
+    : renderResultTable(result?.items, boLabel);
+  return `<div class="verify-block">
+    <div class="verify-block-header"><span class="verify-block-title">${title}</span>${badge}</div>
+    ${body}
+  </div>`;
+}
+
+// ── 헤더 렌더 ─────────────────────────────────────────────
+function renderHeader() {
+  const st = document.getElementById("sheets-status");
+  const activeVersion = state.sheets?.["버전관리"]?.find(v => v["상태"] === "활성");
+  if (state.sheetsLoading) {
+    st.className = "status-loading"; st.textContent = "📡 Sheets 로드 중…";
+  } else if (state.sheetsError) {
+    st.className = "status-err"; st.textContent = "❌ Sheets 오류 (재시도)";
+    st.onclick = loadSheets;
+  } else {
+    st.className = "status-ok"; st.textContent = `✅ Sheets 연결됨 ${activeVersion ? `(${activeVersion["버전"]})` : ""}`;
+    if (activeVersion) {
+      document.getElementById("footer-ver").textContent = `v6.2 · 기준 ${activeVersion["버전"]} (${activeVersion["날짜"] || "2026.6.2"})`;
+    }
+  }
+  // 탭 버튼
+  document.querySelectorAll(".tab-btn").forEach((btn, i) => {
+    btn.classList.toggle("active", (i === 0 && state.mainTab === "verify") || (i === 1 && state.mainTab === "admin"));
+  });
+  // 스텝 인디케이터
+  if (state.mainTab === "verify") {
+    const phases = ["step1","analyzing","version_err"];
+    const cur = phases.includes(state.phase) ? 0 : ["step2","verifying"].includes(state.phase) ? 1 : 2;
+    const steps = ["파일 업로드", "추가 확인", "검증 결과"];
+    document.getElementById("step-indicator").innerHTML = steps.map((label, i) => {
+      const done = i < cur, active = i === cur;
+      return `${i > 0 ? `<div class="step-line${done ? " done" : ""}"></div>` : ""}
+        <div class="step-item">
+          <span class="step-circle${active ? " active" : done ? " done" : ""}">${done ? "✓" : i + 1}</span>
+          <span class="step-label${active ? " active" : done ? " done" : ""}">${label}</span>
+        </div>`;
+    }).join("");
+  } else {
+    document.getElementById("step-indicator").innerHTML = "";
+  }
+}
+
+// ── 메인 렌더 ─────────────────────────────────────────────
+function render() {
+  renderHeader();
+  const main = document.getElementById("main-content");
+  const activeVersion = state.sheets?.["버전관리"]?.find(v => v["상태"] === "활성");
+
+  if (state.sheetsLoading) {
+    main.innerHTML = `<div class="card"><div class="spinner-wrap"><div class="spinner"></div><div class="spinner-msg">Google Sheets에서 검증 기준을 불러오는 중…</div></div></div>`;
+    return;
+  }
+  if (state.sheetsError) {
+    main.innerHTML = `<div class="card" style="background:var(--error-bg)">
+      <div style="font-size:14px;font-weight:700;color:var(--error);margin-bottom:8px">❌ Google Sheets 연결 오류</div>
+      <div style="font-size:13px;color:var(--gray-700);margin-bottom:16px">${state.sheetsError}</div>
+      <button class="btn-secondary" onclick="loadSheets()">다시 시도</button>
+    </div>`;
+    return;
+  }
+
+  if (state.mainTab === "admin") { renderAdmin(main); return; }
+
+  // 검증 탭
+  const p = state.phase;
+
+  if (p === "step1") {
+    main.innerHTML = `<div class="card fu">
+      <div class="section-title"><span class="title-num">1</span>파일 업로드</div>
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:20px">정책서와 BO 속성정보 화면을 업로드하세요.</p>
+      <div class="upload-grid">
+        ${uploadZoneHTML("policy", "📄 정책서", "(탐나는전 정책수당)", "jpg · png · pdf", state.filePolicy)}
+        ${uploadZoneHTML("bo", "🖥️ BO 속성정보 화면", "(Back Office 캡처)", "jpg · png · pdf", state.fileBO)}
+      </div>
+      <button class="btn-primary" ${(!state.filePolicy || !state.fileBO) ? "disabled" : ""} onclick="analyzePolicy()">정책서 분석 시작 →</button>
+    </div>`;
+    bindFileInputs();
+    return;
+  }
+
+  if (p === "analyzing" || p === "verifying") {
+    main.innerHTML = `<div class="card"><div class="spinner-wrap"><div class="spinner"></div><div class="spinner-msg">${state.loadingMsg}</div></div></div>`;
+    return;
+  }
+
+  if (p === "version_err") {
+    const info = state.policyInfo;
+    const reqVer = activeVersion?.["버전"] || REQUIRED_VERSION;
+    main.innerHTML = `<div class="card fu" style="background:var(--error-bg);border:1px solid var(--error)">
+      <div style="font-size:15px;font-weight:700;color:var(--error);margin-bottom:8px">❌ 정책서 버전을 확인해주세요</div>
+      <p style="font-size:13px;color:var(--gray-700);margin-bottom:16px">${info.versionStatus === "없음" ? `버전 정보 없음 — ${reqVer} 이상 필요` : `감지된 버전: ${info.policyVersion} — ${reqVer} 미만`}</p>
+      <button class="btn-secondary" onclick="resetVerify()">← 다시 업로드</button>
+    </div>`;
+    return;
+  }
+
+  if (p === "step2") {
+    const info = state.policyInfo;
+    const reqVer = activeVersion?.["버전"] || REQUIRED_VERSION;
+    let html = `<div class="fu">`;
+    if (info.versionStatus === "높음") html += `<div class="alert warning"><div class="alert-title">⚠️ 지원 버전보다 높은 정책서입니다 (${info.policyVersion})</div><div class="alert-body">관리자 문의: <strong>김효은 02-3774-2730</strong></div></div>`;
+    if (info.priorIssuance === "발행") html += `<div class="alert info"><div class="alert-title">ℹ️ 기 발행 이력이 있는 상품권입니다</div><div class="alert-body">이전 등록건과 정책 내용이 동일한지 확인해주세요.</div></div>`;
+    if (info.missingCritical?.length > 0) html += `<div class="alert error"><div class="alert-title">❌ 필수 항목 누락</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${info.missingCritical.map(l => `<span class="tag error">✗ ${l}</span>`).join("")}</div><button class="btn-secondary" onclick="resetVerify()">← 다시 업로드</button></div>`;
+    if (info.taek1Violations?.length > 0) html += `<div class="alert error"><div class="alert-title">❌ (택1) 조건 위반</div>${info.taek1Violations.map(v => `<div style="background:var(--white);border:1px solid var(--error);border-radius:6px;padding:8px 12px;margin-bottom:6px"><div style="font-size:12px;font-weight:600">${v.field}</div><div style="font-size:12px;color:var(--gray-700)">${v.detail}</div></div>`).join("")}<button class="btn-secondary mt8" onclick="resetVerify()">← 다시 업로드</button></div>`;
+    if (info.missingWarnings?.length > 0) html += `<div class="alert warning"><div class="alert-title">⚠️ 일부 항목이 확인되지 않았어요</div><div style="display:flex;flex-wrap:wrap;gap:6px">${info.missingWarnings.map(l => `<span class="tag warning">△ ${l}</span>`).join("")}</div></div>`;
+
+    html += `<div class="card" style="background:var(--info-bg);border:1px solid #BAE0FD">
+      <div style="font-size:14px;font-weight:600;color:var(--info);margin-bottom:4px">📋 정책서 분석 완료</div>
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:14px">AI가 읽은 값입니다. 정확한지 확인 후 진행해주세요.</div>
+      <div class="chip-row">
+        ${chip("상품권명", info.voucherName, true)}
+        ${chip("핵심어", info.voucherKeyword, true)}
+        ${chip("유효기간", info.validPeriod)}
+        ${chip("발행기간", info.issuancePeriod)}
+        ${chip("발행시작", info.issuanceStart)}
+        ${chip("은행", info.bank)}
+        ${chip("계좌", info.account)}
+        ${chip("사업자", info.bizNumber)}
+      </div>
+      ${(info.needCashback || info.needFirm)
+        ? `<div class="alert warning" style="margin-bottom:0"><div class="alert-title">⚠️ 추가 파일이 필요합니다</div>${info.needCashback ? `<div class="alert-body">• <strong>캐시백 미지급</strong> — BO 캐시백 제외 목록 캡처</div>` : ""}${info.needFirm ? `<div class="alert-body">• <strong>펌 신청완료</strong> — 이체결과 화면 캡처</div>` : ""}</div>`
+        : `<div class="alert success" style="margin-bottom:0"><div class="alert-title">✅ 캐시백·펌테스트 모두 해당없음</div></div>`}
+    </div>`;
+
+    if (info.needCashback || info.needFirm) {
+      const cols = (info.needCashback && info.needFirm) ? "1fr 1fr" : "1fr";
+      html += `<div class="card">
+        <div class="section-title"><span class="title-num">2</span>추가 파일 업로드</div>
+        <div style="display:grid;grid-template-columns:${cols};gap:16px;margin-bottom:20px">
+          ${info.needCashback ? uploadZoneHTML("cashback", "💳 캐시백 제외 목록 화면", "(조건 상품권 화면)", "jpg · png · pdf", state.fileCashback) : ""}
+          ${info.needFirm ? uploadZoneHTML("firm", "🏦 펌테스트 이체결과 화면", "(4항목 확인)", "jpg · png · pdf", state.fileFirm) : ""}
+        </div>
+        <div class="flex-gap">
+          <button class="btn-primary" ${!step2Ready() ? "disabled" : ""} onclick="runVerify()">🔍 검증 실행</button>
+          <button class="btn-secondary" onclick="resetVerify()">초기화</button>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="card" style="background:var(--success-bg);border:1px solid var(--success)">
+        <div style="font-size:14px;color:var(--success);font-weight:600;margin-bottom:12px">✅ 추가 파일 불필요</div>
+        <div class="flex-gap">
+          <button class="btn-primary" onclick="runVerify()">🔍 검증 실행</button>
+          <button class="btn-secondary" onclick="resetVerify()">초기화</button>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+    main.innerHTML = html;
+    bindFileInputs();
+    return;
+  }
+
+  if (p === "result") {
+    const info = state.policyInfo;
+    const { r1, r2, r3 } = state.results;
+    const allR = [r1, info.needCashback ? r2 : null, info.needFirm ? r3 : null].filter(Boolean);
+    const hasFail = allR.some(r => r?.summary?.includes("불일치"));
+    const hasRecheck = allR.some(r => r?.summary?.includes("재확인"));
+    const summaryColor = hasFail ? "var(--error)" : hasRecheck ? "var(--warning)" : "var(--success)";
+    const summaryBg = hasFail ? "var(--error-bg)" : hasRecheck ? "var(--warning-bg)" : "var(--success-bg)";
+    const summaryBorder = hasFail ? "var(--error)" : hasRecheck ? "var(--warning)" : "var(--success)";
+    const summaryText = hasFail ? "❌ 불일치 항목이 있습니다 (FAIL)" : hasRecheck ? "⚠️ 재확인이 필요한 항목이 있습니다" : "✅ 모든 항목이 일치합니다 (PASS)";
+    main.innerHTML = `<div class="fu">
+      <div class="card" style="background:${summaryBg};border:1px solid ${summaryBorder}">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+          <span style="font-size:16px;font-weight:700;color:${summaryColor}">${summaryText}</span>
+          <button class="btn-secondary" onclick="resetVerify()">← 재검증</button>
+        </div>
+        <div class="chip-row">
+          ${chip("상품권명", info.voucherName)}
+          ${chip("핵심어", info.voucherKeyword)}
+          ${chip("유효기간", info.validPeriod)}
+          ${chip("캐시백", info.cashbackStatus)}
+          ${chip("펌등록", info.firmStatus)}
+        </div>
+      </div>
+      <div class="card">
+        ${renderVerifyBlock("2_1 속성정보 검증", r1, false)}
+        ${renderVerifyBlock("2_2 캐시백 미지급 검증", r2, !info.needCashback, `캐시백 상태: "${info.cashbackStatus}" — 검증 대상 아님`)}
+        ${renderVerifyBlock("2_3 펌테스트 이체결과 검증", r3, !info.needFirm, `펌등록 상태: "${info.firmStatus}" — 검증 대상 아님`, "펌테스트 화면값")}
+      </div>
+    </div>`;
+    return;
+  }
+
+  if (p === "error") {
+    main.innerHTML = `<div class="card">
+      <div class="alert error" style="margin-bottom:16px"><div class="alert-title">❌ 오류: ${state.errorMsg}</div></div>
+      <button class="btn-secondary" onclick="resetVerify()">← 처음으로</button>
+    </div>`;
+  }
+}
+
+function step2Ready() {
+  const info = state.policyInfo;
+  return (!info.needCashback || state.fileCashback) && (!info.needFirm || state.fileFirm);
+}
+
+function uploadZoneHTML(key, label, subLabel, hint, file) {
+  const hasFile = !!file;
+  return `<div>
+    <div class="upload-label-text">${label}<div class="upload-sub">${subLabel}</div></div>
+    <label class="upload-zone${hasFile ? " has-file" : ""}" id="zone-${key}">
+      <div class="upload-icon">${hasFile ? "✅" : "📄"}</div>
+      <div class="upload-text">${hasFile ? (file.name.length > 28 ? file.name.slice(0, 26) + "…" : file.name) : "클릭하여 파일 업로드"}</div>
+      <div class="upload-hint">${hasFile ? "클릭하여 변경" : hint}</div>
+      <input type="file" accept="image/*,.pdf" data-key="${key}" />
+    </label>
+  </div>`;
+}
+
+function bindFileInputs() {
+  document.querySelectorAll("input[type=file][data-key]").forEach(input => {
+    input.addEventListener("change", e => {
+      const key = e.target.dataset.key;
+      const file = e.target.files[0];
+      if (!file) return;
+      if (key === "policy") state.filePolicy = file;
+      else if (key === "bo") state.fileBO = file;
+      else if (key === "cashback") state.fileCashback = file;
+      else if (key === "firm") state.fileFirm = file;
+      render();
+    });
+  });
+}
+
+// ── 어드민 렌더 ───────────────────────────────────────────
+function renderAdmin(main) {
+  if (!state.adminAuth) {
+    main.innerHTML = `<div class="card fu" style="max-width:360px;margin:60px auto">
+      <div class="section-title">⚙️ 어드민 접근</div>
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:20px">비밀번호를 입력하세요.</p>
+      <input type="password" id="pw-input" placeholder="비밀번호" style="width:100%;height:44px;padding:0 16px;border:1px solid var(--gray-300);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:12px" />
+      <div id="pw-error" style="display:none;font-size:12px;color:var(--error);margin-bottom:12px">비밀번호가 올바르지 않아요.</div>
+      <button class="btn-primary" style="width:100%" onclick="tryAdminLogin()">접속</button>
+    </div>`;
+    document.getElementById("pw-input").addEventListener("keydown", e => { if (e.key === "Enter") tryAdminLogin(); });
+    return;
+  }
+
+  const tab = state.adminTab;
+  const sheetData = state.sheets?.[tab] || [];
+  const headers = {
+    "버전관리": ["버전","날짜","상태","비고"],
+    "추출항목": ["항목키","항목명","필수여부","택1그룹","설명","활성여부"],
+    "검증기준": ["검증단계","항목명","판단기준","비고","활성여부"]
+  };
+  const tabDesc = {
+    "버전관리": "상태를 '활성'으로 바꾸면 해당 버전이 검증 기준이 됩니다.",
+    "추출항목": "AI가 정책서에서 읽어야 할 항목 목록입니다. 활성여부 Y/N으로 켜고 끌 수 있어요.",
+    "검증기준": "BO UI가 바뀌면 판단기준 텍스트를 수정하세요."
+  };
+  const cols = headers[tab] || [];
+
+  let rows = sheetData.map((row, i) => {
+    if (state.editingRow === i) {
+      return `<tr style="background:var(--primary-light)">
+        ${cols.map(h => `<td style="padding:6px 8px;border:1px solid var(--gray-300)">${(h === "판단기준" || h === "설명") ? `<textarea class="admin-textarea" data-col="${h}" data-row="${i}">${row[h] || ""}</textarea>` : `<input class="admin-input" data-col="${h}" data-row="${i}" value="${(row[h] || "").replace(/"/g, "&quot;")}" />`}</td>`).join("")}
+        <td style="padding:6px 8px;border:1px solid var(--gray-300);text-align:center">
+          <button onclick="saveRow(${i})" style="padding:4px 10px;background:var(--success);color:var(--white);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer">저장</button>
+          <button onclick="cancelEdit()" style="padding:4px 8px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:4px;font-size:11px;cursor:pointer">취소</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
+      ${cols.map(h => `<td style="padding:10px 12px;border:1px solid var(--gray-300);max-width:${(h==="판단기준"||h==="설명")?"280px":"none"};word-break:break-word">${h === "활성여부" ? `<span class="yn-badge ${row[h]==="Y"?"y":"n"}">${row[h]}</span>` : row[h] || "—"}</td>`).join("")}
+      <td style="padding:6px 8px;border:1px solid var(--gray-300);text-align:center">
+        <button onclick="startEdit(${i})" style="padding:4px 10px;background:var(--primary-light);color:var(--primary);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer">수정</button>
+        <button onclick="deleteRow(${i})" style="padding:4px 8px;background:var(--error-bg);color:var(--error);border:none;border-radius:4px;font-size:11px;cursor:pointer">삭제</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  if (state.addingRow) {
+    rows += `<tr style="background:var(--success-bg)">
+      ${cols.map(h => `<td style="padding:6px 8px;border:1px solid var(--gray-300)">${(h === "판단기준" || h === "설명") ? `<textarea class="admin-textarea" data-newcol="${h}" placeholder="${h}"></textarea>` : `<input class="admin-input" data-newcol="${h}" placeholder="${h}" value="${(state.newRow[h]||"").replace(/"/g,"&quot;")}" />`}</td>`).join("")}
+      <td style="padding:6px 8px;border:1px solid var(--gray-300);text-align:center">
+        <button onclick="addRow()" style="padding:4px 10px;background:var(--success);color:var(--white);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer">추가</button>
+        <button onclick="cancelAdd()" style="padding:4px 8px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:4px;font-size:11px;cursor:pointer">취소</button>
+      </td>
+    </tr>`;
+  }
+
+  main.innerHTML = `<div class="card fu">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="section-title" style="margin-bottom:0;border-bottom:none">⚙️ 검증 기준 관리</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="loadSheets()">🔄 새로고침</button>
+        <button class="btn-secondary" onclick="adminLogout()">로그아웃</button>
+      </div>
+    </div>
+    <div class="admin-tab-group">
+      ${["버전관리","추출항목","검증기준"].map(t => `<button class="admin-tab${tab===t?" active":""}" onclick="switchAdminTab('${t}')">${t}</button>`).join("")}
+    </div>
+    <div style="font-size:12px;color:var(--gray-500);margin-bottom:14px;padding:8px 12px;background:var(--info-bg);border-radius:6px">${tabDesc[tab]}</div>
+    <div style="overflow-x:auto;margin-bottom:12px">
+      <table class="admin-table">
+        <thead><tr>${cols.map(h => `<th>${h}</th>`).join("")}<th style="width:80px">관리</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${!state.addingRow ? `<button onclick="startAdd()" style="padding:8px 18px;background:var(--success-bg);color:var(--success);border:1px solid var(--success);border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">+ 새 항목 추가</button>` : ""}
+  </div>`;
+}
+
+function tryAdminLogin() {
+  const pw = document.getElementById("pw-input").value;
+  if (pw === ADMIN_PASSWORD) { state.adminAuth = true; render(); }
+  else { document.getElementById("pw-error").style.display = "block"; document.getElementById("pw-input").value = ""; }
+}
+function adminLogout() { state.adminAuth = false; render(); }
+function switchAdminTab(t) { state.adminTab = t; state.editingRow = null; state.addingRow = false; render(); }
+function startEdit(i) { state.editingRow = i; state.addingRow = false; render(); }
+function cancelEdit() { state.editingRow = null; render(); }
+function startAdd() { state.addingRow = true; state.editingRow = null; state.newRow = {}; render(); }
+function cancelAdd() { state.addingRow = false; state.newRow = {}; render(); }
+
+async function saveRow(i) {
+  const cols = { "버전관리": ["버전","날짜","상태","비고"], "추출항목": ["항목키","항목명","필수여부","택1그룹","설명","활성여부"], "검증기준": ["검증단계","항목명","판단기준","비고","활성여부"] }[state.adminTab] || [];
+  const data = {};
+  cols.forEach(h => {
+    const el = document.querySelector(`[data-col="${h}"][data-row="${i}"]`);
+    if (el) data[h] = el.value;
+  });
+  await gasWrite("updateRow", state.adminTab, data, i);
+  await loadSheets();
+  state.editingRow = null;
+}
+
+async function addRow() {
+  const cols = { "버전관리": ["버전","날짜","상태","비고"], "추출항목": ["항목키","항목명","필수여부","택1그룹","설명","활성여부"], "검증기준": ["검증단계","항목명","판단기준","비고","활성여부"] }[state.adminTab] || [];
+  const data = {};
+  cols.forEach(h => {
+    const el = document.querySelector(`[data-newcol="${h}"]`);
+    if (el) data[h] = el.value;
+  });
+  await gasWrite("addRow", state.adminTab, data);
+  await loadSheets();
+  state.addingRow = false; state.newRow = {};
+}
+
+async function deleteRow(i) {
+  if (!confirm("삭제할까요?")) return;
+  await gasWrite("deleteRow", state.adminTab, {}, i);
+  await loadSheets();
+}
+
+// ── 시작 ──────────────────────────────────────────────────
+loadSheets();
+</script>
+</body>
+</html>
