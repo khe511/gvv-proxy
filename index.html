@@ -321,7 +321,7 @@ JSON만 응답:
   "needCashback": "캐시백 미지급이면 true, 그 외 false",
   "needFirm": "펌 신청완료이면 true, 그 외 false",
   "isDesignatedMerchant": "조건설정2 지정가맹점이면 true, 그 외 false",
-  "policyVersion": "오른쪽 상단 버전 (예: v1.6). 없으면 버전없음",
+  "policyVersion": "오른쪽 상단 버전숫자만 추출 (예: v1.6 또는 v1.7). 괄호 안 날짜 제외. 없으면 버전없음",
   "validityType": "지정일기준|생성일기준|둘다기재|항목없음",
   "validityTypeBothFilled": "true|false",
   "salesUpperChoice": "매출제한없음|지정매출구간|항목없음",
@@ -396,7 +396,7 @@ async function analyzePolicy() {
     info.needDesignatedMerchant = info.isDesignatedMerchant === "true" || info.isDesignatedMerchant === true;
     const activeVersion = state.sheets?.["버전관리"]?.find(v => v["상태"] === "활성");
     const reqVer = activeVersion?.["버전"] || REQUIRED_VERSION;
-    const ver = (info.policyVersion || "").trim();
+    const ver = (info.policyVersion || "").trim().replace(/\(.*\)/, "").trim();
     const verNum = parseVer(ver), reqNum = parseVer(reqVer);
     if (!ver || ver === "버전없음" || verNum === 0) info.versionStatus = "없음";
     else if (verNum < reqNum) info.versionStatus = "낮음";
